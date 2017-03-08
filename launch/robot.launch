@@ -1,0 +1,54 @@
+
+<launch>
+   
+  <arg name="record" default="true" />
+  <arg name="rviz" default="true" />
+  <arg name="server" default="false" />
+<!--  <arg name="export" default="false" /> -->
+
+
+<include file="$(find eyerobot_measure)/launch/lidar_manager.launch" />
+
+<include file="$(find eyerobot_measure)/launch/imu.launch" />
+
+<!--   <node pkg="tf" type="static_transform_publisher"  name="imu_to_laser"
+      args="0 -0.020935  0.0313 -1.57070963  0 0 /imu /laser 50" /> -->
+
+  <node name="transform" pkg="eyerobot_measure" type="tf_broadcast" output="screen"/>
+
+    <node pkg="tf" type="static_transform_publisher"  name="laser_to_camera"
+      args="0.05 -0.03 -0.05 -1.57070963 0 -1.5707963 /base_link /camera_rgb_optical_frame 50" />
+
+    <node pkg="tf" type="static_transform_publisher" name="camera_to_depth"
+      args="0 0 0.1 0.0 0 0.0 /camera_rgb_optical_frame /camera_depth_optical_frame 50" />
+
+<include file="$(find eyerobot_measure)/launch/r200.launch" />
+
+  <node name="scan_proc" pkg="eyerobot_measure" type="scan_proc" output="screen">
+         <param name="roll_scan_min" value="-25"/>
+         <param name="roll_scan_max" value="25"/>
+         <param name="roll_scan_step" value="0.18"/>
+         <param name="pitch_scan_min" value="-85"/>
+         <param name="pitch_scan_max" value="50"/>
+         <param name="pitch_scan_step" value="1"/>
+</node>
+
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_node"  required="true">
+    <param name="port" value="/dev/arduino"/>
+    <param name="baud" value="57600"/>
+  </node>
+
+<node name="rviz" pkg="rviz" type="rviz" args="-d $(find eyerobot_measure)/rviz/robot.rviz"  if="$(arg rviz)"/> 
+
+
+ <node pkg="rosbag" type="record" name="rosbag_record"
+       args=" --lz4  -o '/home/gdev/Brosses/bag' /imu/data_raw /scan /orientation /laser /camera/rgb/image_raw/compressed"
+       if="$(arg record)" output="screen" />
+
+<!-- <node pkg="pcl_ros" type="pointcloud_to_pcd" name="export_pcd"
+       args="input:=/my_cloud _prefix:=/home/gdev/EyeRobot/scan_"
+       if="$(arg export)" output="screen" /> -->
+
+<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" if="$(arg server)" />
+
+</launch>

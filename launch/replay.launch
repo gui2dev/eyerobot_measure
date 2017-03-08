@@ -1,0 +1,68 @@
+
+<launch>
+
+  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="ImuFilterNode" output="screen">
+    <param name="gain" value="0.5"/>
+    <param name="zeta" value="0.000033161255"/>
+    <param name="use_mag" value="false"/>
+    <param name="world_frame" value="enu"/>
+
+
+  </node>
+
+<param name="use_sim_time" type="bool" value="true" />
+  <node name="transform" pkg="eyerobot_measure" type="tf_broadcast" output="screen"/>
+  <node name="to_point_cloud" pkg="eyerobot_measure" type="scan_to_cloud" output="screen"/>
+
+
+ 
+<!--    <node pkg="tf" type="static_transform_publisher" name="laser_to_imu"
+      args="0 0 0  0.0 0.0 0.0 /laser /imu 50" />  -->
+    <node pkg="tf" type="static_transform_publisher"  name="laser_to_camera"
+      args="0.05 -0.03 0 -1.57070963 0 -1.5707963 /laser /camera_rgb_optical_frame 50" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_to_depth"
+      args="0 0 0.1 0.0 0 0.0 /camera_rgb_optical_frame /camera_depth_optical_frame 50" />
+<node name="rviz" pkg="rviz" type="rviz" args="-d $(find eyerobot_measure)/rviz/robot_replay.rviz" />
+
+   <node name="my_assembler" pkg="laser_assembler" type="laser_scan_assembler"  required="true" >
+	 <param name="fixed_frame" type="string" value="base_link"/>
+         <param name="max_scans" type="int" value="5000" />
+         <param name="tf_cache_time_secs" type="double" value="180.0" />
+         <param name="ignore_laser_skew" type="bool" value="false" />
+   </node>
+
+  <node name="periodic_snapshot" pkg="eyerobot_measure" type="periodic_snapshooter" output="screen"/> 
+
+  <node pkg="nodelet" type="nodelet" name="cloud_manager" 
+    args="manager" output="screen" />
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughZ" 
+    args="load pcl/PassThrough cloud_manager"   output="screen">
+	 <param name="filter_field_name" type="string" value="z"/>
+         <param name="filter_limit_min" type="double" value="-0.3" />
+         <param name="filter_limit_max" type="double" value="0.3" />
+        <remap from="PassThroughZ/input" to="my_cloud"/>
+        <remap from="PassThroughZ/output" to="my_cloud_fz"/>
+</node>
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughX" 
+    args="load pcl/PassThrough cloud_manager"  output="screen">
+	 <param name="filter_field_name" type="string" value="x"/>
+         <param name="filter_limit_min" type="double" value="-6" />
+         <param name="filter_limit_max" type="double" value="6" />
+        <remap from="PassThroughX/input" to="my_cloud_fz"/>
+        <remap from="PassThroughX/output" to="my_cloud_fzx"/>
+</node>
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughY" 
+    args="load pcl/PassThrough cloud_manager" output="screen">
+	 <param name="filter_field_name" type="string" value="y"/>
+         <param name="filter_limit_min" type="double" value="-1" />
+         <param name="filter_limit_max" type="double" value="1" />
+        <remap from="PassThroughY/input" to="my_cloud_fzx"/>
+        <remap from="PassThroughY/output" to="my_cloud_fzxy"/>
+</node>
+
+
+
+</launch>

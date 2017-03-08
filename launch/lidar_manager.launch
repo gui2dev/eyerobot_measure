@@ -1,0 +1,60 @@
+<launch>
+
+  <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen">
+  <param name="serial_port"         type="string" value="/dev/rplidar"/>  
+  <param name="serial_baudrate"     type="int"    value="115200"/>
+  <param name="frame_id"            type="string" value="laser"/>
+  <param name="inverted"            type="bool"   value="false"/>
+  <param name="angle_compensate"    type="bool"   value="true"/>
+  <remap from="scan" to="scan_unfiltered"/>
+  </node>
+
+  <node pkg="laser_filters" type="scan_to_scan_filter_chain"
+      name="tilt_shadow_filter">
+    <rosparam command="load" file="$(find eyerobot_measure)/config/laser_config.yaml" />
+    <param name="high_fidelity" value="true" />
+    <remap from="scan" to="scan_unfiltered" />
+    <remap from="scan_filtered" to="scan" />
+  </node>
+
+   <node name="my_assembler" pkg="laser_assembler" type="laser_scan_assembler"  required="true" >
+	 <param name="fixed_frame" type="string" value="base_link"/>
+         <param name="max_scans" type="int" value="5000" />
+         <param name="tf_cache_time_secs" type="double" value="180.0" />
+         <param name="ignore_laser_skew" type="bool" value="false" />
+   </node>
+
+  <node name="periodic_snapshot" pkg="eyerobot_measure" type="periodic_snapshooter" output="screen"/> 
+
+  <node pkg="nodelet" type="nodelet" name="cloud_manager" 
+    args="manager" output="screen" />
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughZ" 
+    args="load pcl/PassThrough cloud_manager"   output="screen">
+	 <param name="filter_field_name" type="string" value="z"/>
+         <param name="filter_limit_min" type="double" value="-0.3" />
+         <param name="filter_limit_max" type="double" value="0.3" />
+        <remap from="PassThroughZ/input" to="my_cloud"/>
+        <remap from="PassThroughZ/output" to="my_cloud_fz"/>
+</node>
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughX" 
+    args="load pcl/PassThrough cloud_manager"  output="screen">
+	 <param name="filter_field_name" type="string" value="x"/>
+         <param name="filter_limit_min" type="double" value="-6" />
+         <param name="filter_limit_max" type="double" value="6" />
+        <remap from="PassThroughX/input" to="my_cloud_fz"/>
+        <remap from="PassThroughX/output" to="my_cloud_fzx"/>
+</node>
+
+  <node pkg="nodelet" type="nodelet" name="PassThroughY" 
+    args="load pcl/PassThrough cloud_manager" output="screen">
+	 <param name="filter_field_name" type="string" value="y"/>
+         <param name="filter_limit_min" type="double" value="-1" />
+         <param name="filter_limit_max" type="double" value="1" />
+        <remap from="PassThroughY/input" to="my_cloud_fzx"/>
+        <remap from="PassThroughY/output" to="my_cloud_fzxy"/>
+</node>
+
+
+</launch>
